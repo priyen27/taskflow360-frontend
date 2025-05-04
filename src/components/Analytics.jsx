@@ -56,7 +56,7 @@ export default function Analytics({ isOpen, onClose }) {
               <div className="bg-white p-4 rounded-lg shadow">
                 <p className="text-gray-600">Active Projects</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {projects.filter(p => tasks.some(t => t.project === p._id && t.status !== TASK_STATUS.DONE)).length}
+                  {projects?.filter(p => tasks?.some(t => t.project === p?._id && t.status !== TASK_STATUS.DONE)).length}
                 </p>
               </div>
             </div>

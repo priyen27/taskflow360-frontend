@@ -16,7 +16,7 @@ export default function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
     assigneeName = user.name;
   } else {
     // Otherwise look in project members
-    const assignee = projectMembers.find(member => member.user._id === task.assignee);
+    const assignee = projectMembers?.find(member => member.user?._id === task.assignee);
     if (assignee) {
       assigneeName = assignee.user.name;
     }
@@ -43,7 +43,7 @@ export default function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
               </svg>
             </button>
             <button
-              onClick={() => onDelete(task._id)}
+              onClick={() => onDelete(task?._id)}
               className="text-red-500 hover:text-red-700 transition-colors"
               title="Delete Task"
             >
@@ -83,7 +83,7 @@ export default function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
       {canEdit ? (
         <select
           value={task.status}
-          onChange={(e) => onStatusChange(task._id, e.target.value)}
+          onChange={(e) => onStatusChange(task?._id, e.target.value)}
           className="w-full mt-2 px-2 py-1 border rounded text-sm bg-gray-50 hover:bg-gray-100 transition-colors"
         >
           {statusOptions.map(option => (

@@ -684,14 +684,14 @@ export default function Dashboard() {
                   >
                     <option value="">Select Project Member</option>
                     {projectMembers
-                      .filter(member => member._id !== user._id)
+                      .filter(member => member?._id !== user?._id)
                       .map((member) => (
-                        <option key={member._id} value={member._id}>
+                        <option key={member._id} value={member?._id}>
                           {member.name} ({member.email})
                         </option>
                       ))}
                   </select>
-                  {projectMembers.filter(member => member._id !== user._id).length === 0 && (
+                  {projectMembers.filter(member => member?._id !== user?._id).length === 0 && (
                     <p className="text-sm text-yellow-600 mt-1">
                       No other members in this project yet
                     </p>
