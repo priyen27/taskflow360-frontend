@@ -4,6 +4,9 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./components/PrivateRoute";
 import { useSelector } from "react-redux";
+import CalendarView from "./pages/CalendarView";
+
+import "./App.css";
 
 function App() {
   const { user } = useSelector((state) => state.auth);
@@ -18,6 +21,7 @@ function App() {
       {/* Protected Routes */}
       <Route element={<PrivateRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/calendar" element={<CalendarView />} />
       </Route>
 
       {/* Catch all route */}

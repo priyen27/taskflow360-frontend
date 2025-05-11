@@ -16,9 +16,9 @@ export default function TaskCard({ task, onStatusChange, onEdit, onDelete }) {
     assigneeName = user.name;
   } else {
     // Otherwise look in project members
-    const assignee = projectMembers?.find(member => member.user?._id === task.assignee);
+    const assignee = projectMembers?.find(member => member?._id === task.assignee);
     if (assignee) {
-      assigneeName = assignee.user.name;
+      assigneeName = assignee.name;
     }
   }
 

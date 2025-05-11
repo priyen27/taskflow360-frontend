@@ -42,10 +42,23 @@ export const deleteTask = createAsyncThunk('tasks/delete', async (id, thunkAPI) 
   }
 });
 
+export const fetchOverdueTasks = createAsyncThunk('tasks/fetchOverdue', async (_, thunkAPI) => {
+  try {
+    const response = await tasksApi.fetchOverdue();
+    return response.data;
+  } catch (err) {
+    const message = err.response?.data?.message || 'Failed to fetch overdue tasks';
+    return thunkAPI.rejectWithValue(message);
+  }
+});
+
 const initialState = {
   tasks: [],
   loading: false,
   error: null,
+  overdueTasks: [],
+  overdueLoading: false,
+  overdueError: null,
 };
 
 const taskSlice = createSlice({
@@ -94,7 +107,20 @@ const taskSlice = createSlice({
       // Delete Task
       .addCase(deleteTask.fulfilled, (state, action) => {
         state.tasks = state.tasks.filter(t => t._id !== action.payload);
+      })
+      .addCase(fetchOverdueTasks.pending, (state) => {
+        state.overdueLoading = true;
+        state.overdueError = null;
+      })
+      .addCase(fetchOverdueTasks.fulfilled, (state, action) => {
+        state.overdueLoading = false;
+        state.overdueTasks = action.payload;
+      })
+      .addCase(fetchOverdueTasks.rejected, (state, action) => {
+        state.overdueLoading = false;
+        state.overdueError = action.payload;
       });
+
   },
 });
 

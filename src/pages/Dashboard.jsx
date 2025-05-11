@@ -4,6 +4,8 @@ import { logout, getProfile } from '../redux/auth/authSlice';
 import { getProjects, createProject, setSelectedProject, updateProject, deleteProject, getProjectMembers } from '../redux/projects/projectSlice';
 import { getTasksByProject, createTask, updateTask, deleteTask } from '../redux/tasks/taskSlice';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import { TASK_STATUS, TASK_STATUS_LABELS, PROJECT_VALIDATION, TASK_VALIDATION } from '../constants/taskConstants';
 import TaskCard from '../components/TaskCard';
@@ -13,9 +15,12 @@ import Analytics from '../components/Analytics';
 import Help from '../components/Help';
 import InviteModal from '../components/InviteModal';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import OverdueTasks from '../components/OverdueTask';
+import Layout from '../components/layout/Layout';
 
 export default function Dashboard() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const projects = useSelector((state) => state.projects.projects);
   const selectedProject = useSelector((state) => state.projects.selectedProject);
   const projectMembers = useSelector((state) => state.projects.projectMembers);
@@ -40,10 +45,7 @@ export default function Dashboard() {
   const [isDeleteConfirmationOpen, setIsDeleteConfirmationOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
-  const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
   const user = useSelector((state) => state.auth.user);
-  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [assignee, setAssignee] = useState('');
   const isAdmin = user?.role === 'admin';
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -52,15 +54,14 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        console.log('Fetching initial data...');
         await dispatch(getProfile()).unwrap();
         const result = await dispatch(getProjects()).unwrap();
-        console.log('Projects fetched successfully:', result);
       } catch (error) {
         console.error('Error fetching initial data:', error);
-        if (error?.includes('401') || error?.response?.status === 401) {
-          console.log('Unauthorized, logging out...');
+        if (error?.err?.status === 401) {
+          toast.error(error?.message || 'Failed to fetch data');
           dispatch(logout());
+          navigate("/login");
         } else {
           toast.error(error || 'Failed to fetch data');
         }
@@ -246,7 +247,6 @@ export default function Dashboard() {
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
-      console.log('Starting task update:', { taskId, newStatus });
       const task = tasks.find(t => t._id === taskId);
       if (!task) {
         console.error('Task not found:', taskId);
@@ -267,8 +267,6 @@ export default function Dashboard() {
 
   const onDragEnd = (result) => {
     const { destination, source, draggableId } = result;
-
-    console.log('Drag ended:', { destination, source, draggableId });
 
     // If dropped outside a droppable area or in same position
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
@@ -292,279 +290,195 @@ export default function Dashboard() {
     );
   };
 
-  // Remove frontend filtering and show all projects returned by the API
   const filteredProjects = projects;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-8">
-              <h1 className="text-3xl font-bold text-gray-900">TaskFlow360</h1>
-              <nav className="hidden md:flex space-x-4">
-                <a 
-                  href="#" 
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsAnalyticsOpen(false);
-                    setIsHelpOpen(false);
-                  }}
-                >
-                  Dashboard
-                </a>
+    <div>
+      <Layout>
+        {/* Main Content */}
+        <main className="flex-grow container mx-auto py-6 px-4">
+          {/* Projects and Tasks Container */}
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Projects List */}
+            <div className="w-full md:w-1/3 lg:w-1/4 bg-white p-6 rounded-lg shadow">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Projects</h2>
                 {isAdmin && (
-                  <a 
-                    href="#" 
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setIsAnalyticsOpen(true);
-                    }}
+                  <button
+                    onClick={() => setIsProjectModalOpen(true)}
+                    className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                   >
-                    Analytics
-                  </a>
+                    + New
+                  </button>
                 )}
-                <a 
-                  href="#" 
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsHelpOpen(true);
-                  }}
-                >
-                  Help
-                </a>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserSettingsOpen(true)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-                >
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                    {user?.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="hidden md:inline">{user?.name}</span>
-                </button>
               </div>
-              <button
-                onClick={() => dispatch(logout())}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-grow container mx-auto py-6 px-4">
-        {/* Projects and Tasks Container */}
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Projects List */}
-          <div className="w-full md:w-1/3 lg:w-1/4 bg-white p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Projects</h2>
-              {isAdmin && (
-                <button
-                  onClick={() => setIsProjectModalOpen(true)}
-                  className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  + New
-                </button>
-              )}
-            </div>
-            <div className="space-y-2">
-              {projectsLoading ? (
-                <div className="text-center py-4">Loading projects...</div>
-              ) : filteredProjects?.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
-                  {isAdmin ? 'No projects yet' : 'No assigned projects'}
-                </div>
-              ) : (
-                filteredProjects.map((project) => (
-                  <div
-                    key={project._id}
-                    className={`p-3 rounded-lg cursor-pointer ${
-                      selectedProject?._id === project._id
-                        ? 'bg-blue-100 border-blue-500'
-                        : 'hover:bg-gray-100'
-                    }`}
-                    onClick={() => dispatch(setSelectedProject(project))}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium">{project.name}</h3>
-                        <p className="text-sm text-gray-600">{project.description}</p>
+              <div className="space-y-2">
+                {projectsLoading ? (
+                  <div className="text-center py-4">Loading projects...</div>
+                ) : filteredProjects?.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    {isAdmin ? 'No projects yet' : 'No assigned projects'}
+                  </div>
+                ) : (
+                  filteredProjects.map((project) => (
+                    <div
+                      key={project._id}
+                      className={`p-3 rounded-lg cursor-pointer ${
+                        selectedProject?._id === project._id
+                          ? 'bg-blue-100 border-blue-500'
+                          : 'hover:bg-gray-100'
+                      }`}
+                      onClick={() => dispatch(setSelectedProject(project))}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">{project.name}</h3>
+                          <p className="text-sm text-gray-600">{project.description}</p>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditProject(project);
+                              }}
+                              className="text-blue-500 hover:text-blue-700"
+                              title="Edit Project"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteProject(project._id);
+                              }}
+                              className="text-red-500 hover:text-red-700"
+                              title="Delete Project"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      {isAdmin && (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditProject(project);
-                            }}
-                            className="text-blue-500 hover:text-blue-700"
-                            title="Edit Project"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProject(project._id);
-                            }}
-                            className="text-red-500 hover:text-red-700"
-                            title="Delete Project"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Tasks Section */}
+            <div className="w-full md:w-2/3 lg:w-3/4 bg-white p-6 rounded-lg shadow">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">
+                  {selectedProject ? `Tasks - ${selectedProject.name}` : 'Select a project'}
+                </h2>
+                <div className="flex space-x-2">
+                  {selectedProject && isAdmin && (
+                    <button
+                      onClick={() => setIsInviteModalOpen(true)}
+                      className="px-3 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+                    >
+                      + Invite
+                    </button>
+                  )}
+                  {selectedProject && isAdmin && (
+                    <button
+                      onClick={() => setIsTaskModalOpen(true)}
+                      className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                    >
+                      + Add Task
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {selectedProject ? (
+                tasksLoading ? (
+                  <div className="text-center py-4">Loading tasks...</div>
+                ) : (
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Todo Column */}
+                      <Droppable droppableId={TASK_STATUS.TODO}>
+                        {(provided) => (
+                          <div 
+                            className="bg-gray-50 p-4 rounded-lg"
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                          >
+                            <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.TODO]}</h3>
+                            <div className="space-y-2 overflow-y-auto max-h-[60vh] pr-2">
+                              {tasks
+                                .filter((task) => 
+                                  task.status === TASK_STATUS.TODO && 
+                                  (isAdmin || task.assignee === user?._id)
+                                )
+                                .map(renderTaskCard)}
+                              {provided.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+
+                      {/* In Progress Column */}
+                      <Droppable droppableId={TASK_STATUS.IN_PROGRESS}>
+                        {(provided) => (
+                          <div 
+                            className="bg-gray-50 p-4 rounded-lg"
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                          >
+                            <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.IN_PROGRESS]}</h3>
+                            <div className="space-y-2 overflow-y-auto max-h-[60vh] pr-2">
+                              {tasks
+                                .filter((task) => 
+                                  task.status === TASK_STATUS.IN_PROGRESS && 
+                                  (isAdmin || task.assignee === user?._id)
+                                )
+                                .map(renderTaskCard)}
+                              {provided.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+
+                      {/* Done Column */}
+                      <Droppable droppableId={TASK_STATUS.DONE}>
+                        {(provided) => (
+                          <div 
+                            className="bg-gray-50 p-4 rounded-lg"
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                          >
+                            <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.DONE]}</h3>
+                            <div className="space-y-2 overflow-y-auto max-h-[60vh] pr-2">
+                              {tasks
+                                .filter((task) => 
+                                  task.status === TASK_STATUS.DONE && 
+                                  (isAdmin || task.assignee === user?._id)
+                                )
+                                .map(renderTaskCard)}
+                              {provided.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  </DragDropContext>
+                )
+              ) : (
+                <div className="text-center text-gray-500">
+                  Select a project to view its tasks
+                </div>
               )}
             </div>
           </div>
-
-          {/* Tasks Section */}
-          <div className="w-full md:w-2/3 lg:w-3/4 bg-white p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">
-                {selectedProject ? `Tasks - ${selectedProject.name}` : 'Select a project'}
-              </h2>
-              <div className="flex space-x-2">
-                {selectedProject && isAdmin && (
-                  <button
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="px-3 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-                  >
-                    + Invite
-                  </button>
-                )}
-                {selectedProject && isAdmin && (
-                  <button
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    + Add Task
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {selectedProject ? (
-              tasksLoading ? (
-                <div className="text-center py-4">Loading tasks...</div>
-              ) : (
-                <DragDropContext onDragEnd={onDragEnd}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Todo Column */}
-                    <Droppable droppableId={TASK_STATUS.TODO}>
-                      {(provided) => (
-                        <div 
-                          className="bg-gray-50 p-4 rounded-lg"
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                        >
-                          <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.TODO]}</h3>
-                          <div className="space-y-2">
-                            {tasks
-                              .filter((task) => 
-                                task.status === TASK_STATUS.TODO && 
-                                (isAdmin || task.assignee === user?._id)
-                              )
-                              .map(renderTaskCard)}
-                            {provided.placeholder}
-                          </div>
-                        </div>
-                      )}
-                    </Droppable>
-
-                    {/* In Progress Column */}
-                    <Droppable droppableId={TASK_STATUS.IN_PROGRESS}>
-                      {(provided) => (
-                        <div 
-                          className="bg-gray-50 p-4 rounded-lg"
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                        >
-                          <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.IN_PROGRESS]}</h3>
-                          <div className="space-y-2">
-                            {tasks
-                              .filter((task) => 
-                                task.status === TASK_STATUS.IN_PROGRESS && 
-                                (isAdmin || task.assignee === user?._id)
-                              )
-                              .map(renderTaskCard)}
-                            {provided.placeholder}
-                          </div>
-                        </div>
-                      )}
-                    </Droppable>
-
-                    {/* Done Column */}
-                    <Droppable droppableId={TASK_STATUS.DONE}>
-                      {(provided) => (
-                        <div 
-                          className="bg-gray-50 p-4 rounded-lg"
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                        >
-                          <h3 className="font-medium mb-3">{TASK_STATUS_LABELS[TASK_STATUS.DONE]}</h3>
-                          <div className="space-y-2">
-                            {tasks
-                              .filter((task) => 
-                                task.status === TASK_STATUS.DONE && 
-                                (isAdmin || task.assignee === user?._id)
-                              )
-                              .map(renderTaskCard)}
-                            {provided.placeholder}
-                          </div>
-                        </div>
-                      )}
-                    </Droppable>
-                  </div>
-                </DragDropContext>
-              )
-            ) : (
-              <div className="text-center text-gray-500">
-                Select a project to view its tasks
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white shadow mt-8">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <p className="text-gray-500 text-sm">© 2024 TaskFlow360. All rights reserved.</p>
-            <div className="flex space-x-6">
-              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Privacy Policy</a>
-              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Terms of Service</a>
-              <a href="#" className="text-gray-500 hover:text-gray-700 text-sm">Contact</a>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* Modals */}
-      <UserSettings
-        isOpen={isUserSettingsOpen}
-        onClose={() => setIsUserSettingsOpen(false)}
-      />
+          <OverdueTasks />
+        </main>
 
       {/* Project Modal */}
       {isProjectModalOpen && (
@@ -673,28 +587,31 @@ export default function Dashboard() {
               />
               {isAdmin && (
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Assign To Project Member
-                  </label>
-                  <select
-                    className="w-full px-4 py-2 border rounded-lg bg-white"
-                    value={assignee}
-                    onChange={(e) => setAssignee(e.target.value)}
-                    required
-                  >
-                    <option value="">Select Project Member</option>
-                    {projectMembers
-                      .filter(member => member?._id !== user?._id)
-                      .map((member) => (
-                        <option key={member._id} value={member?._id}>
-                          {member.name} ({member.email})
-                        </option>
-                      ))}
-                  </select>
-                  {projectMembers.filter(member => member?._id !== user?._id).length === 0 && (
-                    <p className="text-sm text-yellow-600 mt-1">
-                      No other members in this project yet
+                  {projectMembers.filter(m => m._id !== user?._id).length === 0 ? (
+                    <p className="text-sm text-yellow-600 mt-2">
+                      No other members available to assign. Invite someone first.
                     </p>
+                  ) : (
+                    <>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Assign To Project Member
+                      </label>
+                      <select
+                        className="w-full px-4 py-2 border rounded-lg bg-white"
+                        value={assignee}
+                        onChange={(e) => setAssignee(e.target.value)}
+                        required
+                      >
+                        <option value="">Select Project Member</option>
+                        {projectMembers
+                          .filter((m) => m._id !== user?._id)
+                          .map((member) => (
+                            <option key={member._id} value={member._id}>
+                              {member.name} ({member.email})
+                            </option>
+                          ))}
+                      </select>
+                    </>
                   )}
                 </div>
               )}
@@ -745,21 +662,12 @@ export default function Dashboard() {
         message="Are you sure you want to delete this task?"
       />
 
-      <Analytics
-        isOpen={isAnalyticsOpen}
-        onClose={() => setIsAnalyticsOpen(false)}
-      />
-      
-      <Help
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-      />
-
       <InviteModal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
         projectId={selectedProject?._id}
       />
+    </Layout>
     </div>
   );
 }

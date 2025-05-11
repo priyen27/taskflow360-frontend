@@ -5,9 +5,7 @@ import axios from 'axios';
 // Async thunks
 export const getProjects = createAsyncThunk('projects/getAll', async (_, thunkAPI) => {
   try {
-    console.log('Fetching projects...');
     const response = await projectsApi.getAll();
-    console.log('Projects fetched:', response.data);
     return response.data;
   } catch (err) {
     console.error('Error fetching projects:', err);
@@ -98,17 +96,14 @@ const projectSlice = createSlice({
     builder
       // Get Projects
       .addCase(getProjects.pending, (state) => {
-        console.log('Projects loading...');
         state.loading = true;
         state.error = null;
       })
       .addCase(getProjects.fulfilled, (state, action) => {
-        console.log('Projects loaded successfully');
         state.loading = false;
         state.projects = action.payload;
       })
       .addCase(getProjects.rejected, (state, action) => {
-        console.log('Projects loading failed:', action.payload);
         state.loading = false;
         state.error = action.payload;
       })

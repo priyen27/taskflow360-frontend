@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://taskflow360-backend.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -63,4 +63,5 @@ export const tasksApi = {
   create: (data) => api.post('/tasks', data),
   update: (id, data) => api.put(`/tasks/${id}`, data),
   delete: (id) => api.delete(`/tasks/${id}`),
+  fetchOverdue: () => api.get('/tasks/analytics/overdue')
 }; 
